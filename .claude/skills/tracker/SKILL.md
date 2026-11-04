@@ -11,14 +11,24 @@ The tracker only orchestrates. All fetching, parsing and price rules live in the
 
 ## Tracked URLs
 
-Taken from [`TASK.md`](../../../TASK.md). Process them in this order:
+Taken from the "Отслеживаемые ноутбуки" section of [`TASK.md`](../../../TASK.md). Process them in this order:
 
 1. https://kaspi.kz/shop/p/asus-vivobook-15-x1502va-bq1274-15-6-intel-core-i5-13420h-16-gb-ssd-512-gb-uhd-graphics-bez-os-90nb10t2-m01th0-serebristyi-142645394/?c=750000000
    (ASUS VivoBook 15 X1502VA-BQ1274, in stock, with a discount)
 2. https://kaspi.kz/shop/p/asus-15-6-16-gb-ssd-512-gb-dos-x515ea-bq970-90nb0ty2-m02zn0-108345103/?c=750000000
    (ASUS X515EA, out of stock: expected to produce an error row, kept on purpose as an error example)
+3. https://kaspi.kz/shop/p/rynex-nt1805-15-6-intel-celeron-j3455-12-gb-ssd-512-gb-intel-arc-graphics-140v-win-11-nt1805-serebristyi-176721925/?c=750000000
+   (Rynex NT1805)
+4. https://kaspi.kz/shop/p/hydra-home-h20-15-6-intel-pentium-n4200-12-gb-ssd-512-gb-hd-graphics-500-win-10-mkii-serebristyi-115019992/?c=750000000
+   (HYDRA Home H20)
+5. https://kaspi.kz/shop/p/lenovo-ideapad-3-15-6-intel-celeron-n4020-8-gb-ssd-256-gb-uhd-graphics-600-bez-os-15igl05-81wq00errk-seryi-102715483/?c=750000000
+   (Lenovo IdeaPad 3 15IGL05, Celeron N4020)
+6. https://kaspi.kz/shop/p/lenovo-ideapad-3-15-6-intel-core-i3-1215u-8-gb-ssd-512-gb-uhd-graphics-win-11-15iau7-82rk00ewrk-seryi-107333284/?c=750000000
+   (Lenovo IdeaPad 3 15IAU7, Core i3-1215U)
+7. https://kaspi.kz/shop/p/acer-aspire-3-15-6-intel-celeron-n4500-8-gb-ssd-256-gb-uhd-graphics-win-11-pro-a325-45-zn-n01si-03k-serebristyi-136300221/?c=750000000
+   (Acer Aspire 3 A325-45, Celeron N4500)
 
-To track another product, add its `kaspi.kz/shop/p/...` URL to this list.
+To track another product, add its `kaspi.kz/shop/p/...` URL to this list and to `TASK.md`.
 
 ## Main scenario
 
