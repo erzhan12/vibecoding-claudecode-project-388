@@ -6,9 +6,9 @@
 
 ## Контракт
 
-- regular_price — unitPriceBeforeDiscount
-- sale_price — price
-- Рассрочку не отслеживаем: на Kaspi она есть у всех товаров.
+- regular_price — unitPriceBeforeDiscount (если нет — price)
+- sale_price — price, если он ниже regular_price; иначе null (скидки нет)
+- has_credit — есть ли рассрочка (рассрочка / Kaspi Red / кредит) на карточке товара; boolean.
 
 ## Ссылки
 
