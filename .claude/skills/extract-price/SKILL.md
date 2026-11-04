@@ -32,13 +32,13 @@ Output (JSON only, no free-form text before or after):
      "<url>"
    ```
 
-2. Prices are not in visible text: search the embedded JSON/data inside the HTML (`<script>` blocks, inline state objects) for `unitPriceBeforeDiscount` and `price`. Use the values that belong to the product itself, not to recommended or similar products or to other offers.
+2. Prices are not in visible text: take them from the product object embedded in the page's inline state, the `"card":{"id":"<product id>", ...}` object, fields `price` (number) and `unitPriceBeforeDiscount`. Do not use the JSON-LD `"price"` (it is a string and is `"undefined"` when the product is out of stock) or values of recommended products and other offers.
 3. Normalize: remove spaces, non-breaking spaces and `₸`, then convert to a number with 2 decimals (`"289 990 ₸"` becomes `289990.00`).
 4. Compute the fields:
-   - `regular_price` = `unitPriceBeforeDiscount`, or `price` if it is absent;
+   - `regular_price` = `unitPriceBeforeDiscount`, or `price` if it is missing. Kaspi sends `unitPriceBeforeDiscount: 0` (not an absent key) when there is no discount, so treat `0` and `null` as missing too;
    - `sale_price` = `price` only if `price < regular_price`, otherwise `null`;
-   - `has_credit` = `true` if the page data or text mentions installments (рассрочка, Kaspi Red, кредит) as an available option for this product.
-5. Check the result: both prices must be positive numbers. Otherwise treat it as a failure.
+   - `has_credit`: see "Open question: has_credit" below.
+5. Check the result: both prices must be positive numbers. Otherwise treat it as a failure. If the JSON-LD says `"availability": "OutOfStock"` and the card has no valid `price`, the reason is `product unavailable (out of stock)`.
 6. On failure (page not loaded, product unavailable, prices not found) return only:
 
    ```json
@@ -46,6 +46,12 @@ Output (JSON only, no free-form text before or after):
    ```
 
    Never invent or estimate prices to fill the fields. Reject any input that is not a single `kaspi.kz/shop/p/...` URL with the same error shape.
+
+## Open question: has_credit
+
+Checked on 4 live product pages (3 in stock, 1 out of stock): the page HTML has **no per-product installment field**. The words рассрочка / кредит / Kaspi Red appear only in the generic SEO text of `<head>` (`<meta name="description">`, `og:*`), identically on every page, including out-of-stock ones. A text search therefore always returns `true`, so **do not derive `has_credit` from `<head>`/meta text**.
+
+The catalog API (`/yml/product-view/pl/results`) does expose `loanAvailable` per product (it was `true` for all 48 laptops checked), and the offers API does not. How to fill `has_credit` is not decided yet.
 
 ## Examples
 
