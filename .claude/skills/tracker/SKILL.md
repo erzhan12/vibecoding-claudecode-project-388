@@ -1,6 +1,6 @@
 ---
 name: tracker
-description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. Use when asked to run the tracker or check prices of all tracked laptops. Later this skill will also diff against previous runs and notify via Telegram.
+description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products, compares it with the previous snapshot (price up/down, discount started/ended, availability, credit; flags significant changes) and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. Use when asked to run the tracker or check prices of all tracked laptops. Later this skill will also notify via Telegram.
 ---
 
 # tracker
@@ -80,7 +80,71 @@ Run: 2026-11-04 12:00 (Asia/Almaty)
 
 After the table, add one summary line: how many URLs were checked, how many succeeded and how many failed.
 
-Then save the snapshot (see "Save snapshot to tracker-data") and finish with the saved file path and the commit SHA and link.
+Then compare the run with the previous snapshot (see "Compare with previous run"), save the snapshot (see "Save snapshot to tracker-data") and finish with the saved file path and the commit SHA and link.
+
+## Compare with previous run
+
+Compare this run with the previous snapshot in `erzhan12/tracker-data` (same repository and GitHub MCP tools as in "Save snapshot to tracker-data"). Do it **before** saving, because a second run on the same day overwrites that day's file.
+
+### Find the previous snapshot
+
+1. List the repository root with `get_file_contents` (path `/`, `main`).
+2. Keep only files named exactly `YYYY-MM-DD.json` whose date is **strictly earlier** than this run's date (Asia/Almaty). Today's own file is never the "previous run".
+3. Take the latest of them and read it with `get_file_contents`. If it is missing, unreadable or not valid JSON in the snapshot format, try the next earlier one.
+4. If there is none, this is the baseline: print `Previous run: none (baseline)`, skip the comparison and go on to saving.
+
+### Match items
+
+Match rows by `product_id`, never by position or URL text.
+
+- In this run, not in the previous one → `new product`.
+- In the previous one, not in this run → `removed from list`.
+
+### Compare values
+
+For each matched product use the **effective price** = `sale_price` if it is not `null`, else `regular_price`. Prices are compared as numbers; a percentage is `(new − old) / old × 100`, rounded to 1 decimal for display only.
+
+Classify every difference with the rules below, in this order. A product may get several kinds at once (for example `discount started` and `price down`). A **significant** change is one marked "yes"; the rest are reported as minor.
+
+| Kind | Rule | Significant |
+|------|------|-------------|
+| `back in stock` | previous row has `error`, this row has no `error` | yes |
+| `became unavailable` | previous row has no `error`, this row has `error` | yes |
+| `discount started` | previous `sale_price` is `null`, this one is not | yes |
+| `discount ended` | previous `sale_price` is not `null`, this one is `null` | yes |
+| `price down` | effective price lower than before | yes if the drop is ≥ 3 % **or** ≥ 10 000 KZT, else minor |
+| `price up` | effective price higher than before | yes if the rise is ≥ 3 % **or** ≥ 10 000 KZT, else minor |
+| `regular price changed` | `regular_price` changed, effective price did not | minor |
+| `credit changed` | `has_credit` changed between `true` and `false` | yes |
+| `new product` / `removed from list` | see "Match items" | yes |
+
+Not a change, and not reported:
+
+- both rows have an `error` (even if the reason text differs);
+- `has_credit` went to or from `null` (the catalog API call failed; prices are unaffected);
+- prices equal to the cent.
+
+Price kinds (`price down`, `price up`, `regular price changed`) are only computed when both rows have no `error`. Never guess a value for an error row.
+
+### Output
+
+After the run table and its summary line, print:
+
+```markdown
+Previous run: 2026-11-04 (2026-11-04T18:20:11+05:00)
+
+| product_id | change | old | new | Δ | significant |
+|------------|--------|-----|-----|---|-------------|
+| 142645394 | discount started, price down | 289990.00 | 259990.00 | −30000.00 (−10.3 %) | yes |
+| 108345103 | back in stock | error: product unavailable (out of stock) | 199990.00 | | yes |
+| 115019992 | price up | 160000.00 | 161500.00 | +1500.00 (+0.9 %) | no |
+```
+
+(Numbers are illustrative.) `old` / `new` are the effective prices, or `error: <reason>` for an error row. One row per product that has any reported change, in the order of the tracked URL list; then removed products. If nothing changed, print `No changes since <previous date>.` instead of the table.
+
+End with one line: `Significant changes: N` (`N` = number of products with at least one significant change). Only significant changes will be sent to Telegram in a later step; this skill does not send anything yet.
+
+The comparison is output only: it does not change the run table or the snapshot format, and a failed comparison (previous snapshot unreadable, GitHub MCP unavailable) never blocks saving the snapshot. Report it as `Previous run: comparison failed: <reason>` and continue.
 
 ## Save snapshot to tracker-data
 
@@ -140,4 +204,4 @@ UTF-8 JSON, 2-space indent, trailing newline. Rows are in the order of the track
 
 (Numbers are illustrative. Use the full URLs.) `product_id` is the numeric id at the end of the URL path; it is the stable key for comparing snapshots between days.
 
-Later steps of the project will compare the snapshot with the previous one and send significant changes to Telegram; this skill does not do that yet.
+A later step of the project will send the significant changes found in "Compare with previous run" to Telegram; this skill does not do that yet.
