@@ -1,6 +1,6 @@
 ---
 name: tracker
-description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through the GitHub MCP server. Use when asked to run the tracker or check prices of all tracked laptops. Later this skill will also diff against previous runs and notify via Telegram.
+description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. Use when asked to run the tracker or check prices of all tracked laptops. Later this skill will also diff against previous runs and notify via Telegram.
 ---
 
 # tracker
@@ -84,7 +84,12 @@ Then save the snapshot (see "Save snapshot to tracker-data") and finish with the
 
 ## Save snapshot to tracker-data
 
-After the run table is complete, store it in the private repository `erzhan12/tracker-data` through the **GitHub MCP server** (`github`, configured in the project's [`.mcp.json`](../../../.mcp.json); the token comes from the `GITHUB_PAT` environment variable).
+After the run table is complete, store it in the private repository `erzhan12/tracker-data` with the GitHub MCP tools `mcp__github__get_file_contents` and `mcp__github__create_or_update_file`. Which server answers those tools depends on where the skill runs:
+
+- **Cloud session (main path).** The tools come from the session's built-in GitHub integration. It only reaches repositories attached to the session, so `erzhan12/tracker-data` must be added to the session **with write access** (selected when the session starts, or attached with `add_repo` and `access: push`). If it is not attached, the call fails with `Access denied: repository "erzhan12/tracker-data" is not configured for this session`: ask the user to attach it, do not work around it.
+- **Local run, or a cloud environment that allows `api.githubcopilot.com` (fallback).** The tools come from the `github` server in the project's [`.mcp.json`](../../../.mcp.json), authenticated with the `GITHUB_PAT` environment variable. The server must be approved for the project (for example `"enabledMcpjsonServers": ["github"]` in the uncommitted `.claude/settings.local.json`). In the cloud this server currently stays in "Pending approval", and the session proxy only lets GitHub calls reach repositories attached to the session, so it does not replace the main path there.
+
+The steps and calls below are the same on both paths.
 
 - **Repository:** owner `erzhan12`, repo `tracker-data`, default branch `main`.
 - **Path:** `YYYY-MM-DD.json` in the repository root, where the date is the run date in `Asia/Almaty` (UTC+5), for example `2026-11-05.json`.
@@ -99,7 +104,7 @@ Steps:
 3. Call the GitHub MCP `create_or_update_file` tool with `owner`, `repo`, `path`, `branch: main`, the commit message, the JSON as plain text `content` (not base64), and `sha` only when updating.
 4. Report the path and the commit SHA with its link (`https://github.com/erzhan12/tracker-data/commit/<sha>`).
 
-If the GitHub MCP server is not available or the write fails, still return the run table, then state clearly that the snapshot was NOT saved and quote the error. Do not fall back to `gh`, `git` with a token, or raw API calls, and never print, log or write the token anywhere.
+If neither path is available (no `mcp__github__*` tools, repository not attached, server not approved or not reachable) or the write fails, still return the run table, then state clearly that the snapshot was NOT saved and quote the error. Do not fall back to `gh`, `git` with a token, or raw API calls, and never print, log or write the token anywhere.
 
 ### Snapshot format
 
