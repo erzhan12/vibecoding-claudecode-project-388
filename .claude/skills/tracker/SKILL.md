@@ -1,6 +1,6 @@
 ---
 name: tracker
-description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. Use when asked to run the tracker or check prices of all tracked laptops. Later this skill will also diff against previous runs and notify via Telegram.
+description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products, compares it with the previous run read from tracker-data (diff by URL on regular_price, sale_price, has_credit), keeps only the changes that are significant under the rules in KNOWLEDGE.md and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. Use when asked to run the tracker or check prices of all tracked laptops. Later this skill will also notify via Telegram.
 ---
 
 # tracker
@@ -80,7 +80,68 @@ Run: 2026-11-04 12:00 (Asia/Almaty)
 
 After the table, add one summary line: how many URLs were checked, how many succeeded and how many failed.
 
-Then save the snapshot (see "Save snapshot to tracker-data") and finish with the saved file path and the commit SHA and link.
+Then compare the run with the previous run and print only significant changes (see "Compare with previous run"), save the snapshot (see "Save snapshot to tracker-data") and finish with the saved file path and the commit SHA and link.
+
+## Compare with previous run
+
+Compare this run with the previous run stored in `erzhan12/tracker-data` (same repository and GitHub MCP tools as in "Save snapshot to tracker-data"), then keep only the significant changes. Three stages: find the previous run, compute the diff, filter it with the rules from [`KNOWLEDGE.md`](../../../KNOWLEDGE.md).
+
+Do all of it **before** saving the new snapshot: saving can overwrite the file that is the previous run.
+
+### 1. Find the previous run
+
+1. List the repository root with `get_file_contents` (path `/`, `main`).
+2. Keep only files named exactly `YYYY-MM-DD.json` (other files such as `README.md` are ignored).
+3. Take the one with the **latest date** and read it with `get_file_contents`. This is the previous run. It can be today's file from an earlier run today: it is read before this run overwrites it.
+4. If that file is unreadable or not valid JSON in the snapshot format, try the next latest one.
+5. If there are no snapshot files at all, this is the **first run**: print `Previous run: none (first run, nothing to compare)`, skip stages 2 and 3, and go on to saving.
+
+### 2. Compute the diff
+
+Match products by `url` (exact string). Then, for each URL:
+
+- in this run but not in the previous one → change `new product`;
+- in the previous run but not in this one → change `removed from list`;
+- in both → compare field by field:
+  - `error`: ok → error, error → ok, or error in both;
+  - if neither row has an `error`, compare `regular_price`, `sale_price` and `has_credit`, each on its own. For each field that differs, record `field`, `old`, `new`; for prices also `Δ = new − old` and `Δ % = Δ / old × 100`.
+
+The diff is the full list of field changes per product, before any filtering. Never fill an error row with guessed or old values.
+
+### 3. Apply the significance rules
+
+Read [`KNOWLEDGE.md`](../../../KNOWLEDGE.md) (project root) and apply its rules to every change in the diff: price threshold, discount started / ended, credit changed, availability, new / removed product. Do not hard-code the rules or the threshold in this skill: `KNOWLEDGE.md` is the single source; if it changes, follow the new version.
+
+Keep only the changes the rules call significant and **drop everything else**: changes under the price threshold (for example kopeck-level fluctuations), `has_credit` going to or from `null`, error in both runs, and so on.
+
+### Output
+
+After the run table and its summary line, print only the significant changes, never the full price list again:
+
+```markdown
+Previous run: 2026-11-04.json (run_at 2026-11-04T18:20:11+05:00)
+
+| product | change | old | new | Δ |
+|---------|--------|-----|-----|---|
+| [142645394](https://kaspi.kz/shop/p/...-142645394/?c=750000000) | discount started | null | 259990.00 | |
+| [115019992](https://kaspi.kz/shop/p/...-115019992/?c=750000000) | regular_price down | 160000.00 | 155000.00 | −5000.00 (−3.1 %) |
+| [108345103](https://kaspi.kz/shop/p/...-108345103/?c=750000000) | back in stock | error: product unavailable (out of stock) | 199990.00 / null | |
+| [107333284](https://kaspi.kz/shop/p/...-107333284/?c=750000000) | credit lost | true | false | |
+
+Significant changes: 4 (in 4 products). Dropped as insignificant: 2.
+```
+
+(Numbers are illustrative.)
+
+- `product`: the product ID from the URL, linked to the full URL.
+- `change`: what happened, in the words of `KNOWLEDGE.md`: `regular_price up/down`, `sale_price up/down`, `discount started`, `discount ended`, `credit gained`, `credit lost`, `back in stock`, `became unavailable`, `new product`, `removed from list`.
+- `old` / `new`: the values of that field; for availability changes, the error reason or `regular_price / sale_price`.
+- Rows in the order of the tracked URL list, removed products last. A product can have several rows.
+- If nothing is significant, print `No significant changes since <previous file>.` instead of the table, still followed by the `Dropped as insignificant: M` count.
+
+Only these significant changes will be sent to Telegram in a later step; this skill does not send anything yet.
+
+The comparison is output only: it does not change the run table or the snapshot format. A failed comparison (previous snapshot unreadable, GitHub MCP unavailable) never blocks saving the snapshot: report `Previous run: comparison failed: <reason>` and continue.
 
 ## Save snapshot to tracker-data
 
@@ -140,4 +201,4 @@ UTF-8 JSON, 2-space indent, trailing newline. Rows are in the order of the track
 
 (Numbers are illustrative. Use the full URLs.) `product_id` is the numeric id at the end of the URL path; it is the stable key for comparing snapshots between days.
 
-Later steps of the project will compare the snapshot with the previous one and send significant changes to Telegram; this skill does not do that yet.
+A later step of the project will send the significant changes found in "Compare with previous run" to Telegram; this skill does not do that yet.
