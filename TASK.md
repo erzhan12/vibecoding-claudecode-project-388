@@ -6,8 +6,10 @@
 
 ## Контракт
 
-- regular_price — unitPriceBeforeDiscount (если нет — price)
-- sale_price — price, если он ниже regular_price; иначе null (скидки нет)
+- price — цена, по которой товар продаётся сейчас (фактическая цена покупки); unitPriceBeforeDiscount — цена до скидки (0 или нет поля — скидки нет)
+- regular_price — unitPriceBeforeDiscount, если он больше price (есть скидка); иначе price
+- sale_price — price, если unitPriceBeforeDiscount больше price; иначе null (скидки нет)
+- Текущая цена (sale_price, а если null — regular_price) всегда равна price. Если unitPriceBeforeDiscount равен price или меньше него (устаревшее значение), скидки нет и regular_price = price: фактическая цена не занижается.
 - has_credit — есть ли рассрочка; берётся из `loanAvailable` каталожного API Kaspi по ID товара (неофициальный endpoint). boolean, а если запрос не удался — null (цены при этом возвращаются).
 
 ## Ссылки
