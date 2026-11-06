@@ -12,6 +12,7 @@
 |---|---|
 | [`.claude/skills/tracker/SKILL.md`](.claude/skills/tracker/SKILL.md) | Скилл `tracker`: полный прогон по списку товаров, сравнение с прошлым снимком, сводка в Telegram, сохранение снимка в `erzhan12/tracker-data` |
 | [`.claude/skills/extract-price/SKILL.md`](.claude/skills/extract-price/SKILL.md) | Скилл `extract-price`: цены и рассрочка по одной ссылке на карточку |
+| [`.claude/agents/telegram-summary.md`](.claude/agents/telegram-summary.md) | Сабагент `telegram-summary` (`model: haiku`, без инструментов): из готового списка значимых изменений пишет текст сводки для Telegram; правила оформления сводки — только здесь |
 | [`KNOWLEDGE.md`](KNOWLEDGE.md) | Правила значимости изменений (порог цены, скидка, рассрочка, наличие) |
 | [`send.py`](send.py) | Отправка текста в Telegram: `python3 send.py "текст"` |
 | [`tests/test_send.py`](tests/test_send.py) | Тесты `send.py` без сети |
@@ -23,7 +24,7 @@
 
 ## Правила
 
-- Скиллы не дублируют друг друга: `tracker` только оркестрирует, всё извлечение цен — в `extract-price`; пороги и правила значимости — только в `KNOWLEDGE.md`.
+- Скиллы не дублируют друг друга: `tracker` только оркестрирует, всё извлечение цен — в `extract-price`; пороги и правила значимости — только в `KNOWLEDGE.md`; оформление Telegram-сводки — только в агенте `telegram-summary` (он не решает значимость, не собирает цены и ничего не отправляет).
 - Список товаров ведётся в двух местах синхронно: раздел «Отслеживаемые ноутбуки» в `TASK.md` и «Tracked URLs» в скилле `tracker`.
 - Секреты (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `GITHUB_PAT`) берутся из переменных окружения или `.env` (он в `.gitignore`). Не выводите их, не передавайте в аргументах команд, не пишите в файлы и коммиты. В Telegram отправляет только `send.py`.
 - Не удаляйте и не меняйте `.github/workflows/hexlet-check.yml`: на нём держатся автотесты Хекслета.
