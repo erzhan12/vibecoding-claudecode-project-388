@@ -1,6 +1,6 @@
 ---
 name: tracker
-description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products, compares it with the previous run read from tracker-data (diff by URL on regular_price, sale_price, has_credit), keeps only the changes that are significant under the rules in KNOWLEDGE.md and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. If there are significant changes, sends a short summary (one line per change: product name, old and new price, link) to Telegram with send.py from the project root; sends nothing when there are none. Use when asked to run the tracker or check prices of all tracked laptops.
+description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products, compares it with the previous run read from tracker-data (diff by URL on regular_price, sale_price, has_credit), keeps only the changes that are significant under the rules in KNOWLEDGE.md and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. If there are significant changes, has the telegram-summary sub-agent (.claude/agents/telegram-summary.md, Haiku) format a short summary (one line per change: product name, old and new price, link) and sends that text to Telegram with send.py from the project root; when there are none, calls neither the agent nor send.py. Use when asked to run the tracker or check prices of all tracked laptops.
 ---
 
 # tracker
@@ -82,7 +82,7 @@ After the table, add one summary line: how many URLs were checked, how many succ
 
 Then compare the run with the previous run and print only significant changes (see "Compare with previous run"), send them to Telegram if there are any (see "Notify via Telegram"), save the snapshot (see "Save snapshot to tracker-data") and finish with the Telegram status, the saved file path and the commit SHA and link.
 
-To track another product, give it a short name in the list above too: the Telegram summary uses it.
+To track another product, give it a short name in the list above too: the Telegram summary uses it (as `name` in the `telegram-summary` input).
 
 ## Compare with previous run
 
@@ -152,51 +152,66 @@ Right after "Compare with previous run" and **before** saving the snapshot, send
 ### When to send
 
 - Send only if the comparison finished and found **at least one** significant change.
-- Send **nothing** if there are no significant changes, on the first run (no previous snapshot), or if the comparison failed. Do not send "no changes" or error messages.
+- Send **nothing** if there are no significant changes, on the first run (no previous snapshot), or if the comparison failed. In these cases do not call the `telegram-summary` agent either. Do not send "no changes" or error messages.
 - Send once per run. Never resend because of a retry of another step.
 
-### Message
+### Summary text: the `telegram-summary` agent
 
-Plain text (`send.py` sends without `parse_mode`, so no Markdown or HTML escaping is needed; Telegram makes the links clickable). Write it in Russian:
+The message text is written by the sub-agent [`telegram-summary`](../../agents/telegram-summary.md) (`model: haiku`, `tools: []`: no tools at all). All formatting rules (header, line format, price format, Russian change wording) live only in that file: do not repeat or change them here.
 
-```text
-Kaspi: значимые изменения цен (2026-11-06 18:00, Алматы)
+The agent only formats. Significance, the order of changes and every value are decided here, in the tracker; the agent never sees the run table, the snapshots or `KNOWLEDGE.md`, and never sends anything.
 
-ASUS VivoBook 15 X1502VA-BQ1274 — скидка появилась: 289 990 ₸ → 259 990 ₸ — https://kaspi.kz/shop/p/...-142645394/?c=750000000
-HYDRA Home H20 — цена без скидки снизилась: 160 000 ₸ → 155 000 ₸ (−3.1 %) — https://kaspi.kz/shop/p/...-115019992/?c=750000000
-ASUS X515EA — снова в наличии: нет в наличии → 199 990 ₸ — https://kaspi.kz/shop/p/...-108345103/?c=750000000
-Lenovo IdeaPad 3 15IAU7 — рассрочка пропала: 165 000 ₸ → 165 000 ₸ — https://kaspi.kz/shop/p/...-107333284/?c=750000000
-```
+1. **Skip it when there is nothing to send.** If the comparison found no significant changes, was the first run or failed, do not call the agent and do not run `send.py` (see "When to send").
+2. **Build the input** — one JSON object, nothing else in the prompt:
 
-(Numbers are illustrative. In the real message use the full URLs.)
+   ```json
+   {
+     "run_at": "2026-11-06 18:00",
+     "changes": [
+       {"name": "ASUS VivoBook 15 X1502VA-BQ1274", "url": "https://kaspi.kz/shop/p/...-142645394/?c=750000000", "change": "discount started", "old": 289990.00, "new": 259990.00, "delta_pct": null, "reason": null}
+     ]
+   }
+   ```
 
-- First line: the header with the run time (Asia/Almaty), then an empty line.
-- Then **one line per significant change**, in the same order as the comparison table (a product with two changes gets two lines): `<name> — <change>: <old> → <new> — <url>`.
-- `<name>`: the short name from "Tracked URLs" (the text in parentheses up to the first comma, for example `Lenovo IdeaPad 3 15IGL05`). For a product removed from the list, use its product ID.
-- `<url>`: the full tracked URL (for a removed product, the URL from the previous snapshot).
-- Prices: KZT with `₸`, thousands separated by spaces, `.00` dropped (`259 990 ₸`); keep kopecks if they are not zero (`259 990.50 ₸`). Copy the values from the run and the previous snapshot, never recompute or guess them.
-- The current price of a product is `sale_price` if it is not `null`, otherwise `regular_price`.
-- `<change>`, `<old>` and `<new>` for each kind of change from `KNOWLEDGE.md`:
+   - `run_at`: the run time, Asia/Almaty, `YYYY-MM-DD HH:MM`.
+   - `changes`: exactly the significant changes, one element per row of the comparison table, in the same order.
+   - `name`: the short name from "Tracked URLs" (the text in parentheses up to the first comma, for example `Lenovo IdeaPad 3 15IGL05`); for a product removed from the list, its product ID.
+   - `url`: the full tracked URL (for a removed product, the URL from the previous snapshot).
+   - `change`: the `change` value from the comparison table.
+   - `old` / `new`: numbers copied from the run and the previous snapshot (never recomputed or rounded), or `"unavailable"` (error row), or `"none"` (no value). Which value goes where:
 
-| change (comparison table) | `<change>` in the message | `<old>` → `<new>` |
-|---|---|---|
-| `regular_price up` / `down` | `цена без скидки выросла` / `снизилась` | old → new `regular_price`, then `(±Δ %)` |
-| `sale_price up` / `down` | `цена со скидкой выросла` / `снизилась` | old → new `sale_price`, then `(±Δ %)` |
-| `discount started` | `скидка появилась` | old current price → new `sale_price` |
-| `discount ended` | `скидка закончилась` | old `sale_price` → new current price |
-| `credit gained` / `credit lost` | `рассрочка появилась` / `рассрочка пропала` | old current price → new current price |
-| `back in stock` | `снова в наличии` | `нет в наличии` → new current price |
-| `became unavailable` | `недоступен (<error reason>)` | old current price → `нет в наличии` |
-| `new product` | `новый товар` | `—` → current price (`нет в наличии`, if its row is an error) |
-| `removed from list` | `убран из списка` | old current price (or `нет в наличии`) → `—` |
+     | `change` | `old` | `new` |
+     |---|---|---|
+     | `regular_price up` / `down` | old `regular_price` | new `regular_price` |
+     | `sale_price up` / `down` | old `sale_price` | new `sale_price` |
+     | `discount started` | old current price | new `sale_price` |
+     | `discount ended` | old `sale_price` | new current price |
+     | `credit gained` / `credit lost` | old current price | new current price |
+     | `back in stock` | `"unavailable"` | new current price |
+     | `became unavailable` | old current price | `"unavailable"` |
+     | `new product` | `"none"` | current price, or `"unavailable"` if its row is an error |
+     | `removed from list` | old current price, or `"unavailable"` | `"none"` |
 
-`Δ %` is the same value as in the comparison table, with 1 decimal.
+     The current price of a product is `sale_price` if it is not `null`, otherwise `regular_price`.
+   - `delta_pct`: for `regular_price` / `sale_price up/down`, the `Δ %` from the comparison table rounded to 1 decimal (a number, negative for a drop); otherwise `null`.
+   - `reason`: for `became unavailable`, the `error` reason from the run; otherwise `null`.
+3. **Call the agent** with the Agent tool, `subagent_type: "telegram-summary"`, the JSON above as the whole prompt, in the foreground (the next step needs the result). Do not override its model.
+4. **Check the text before sending.** Take the agent's reply as is and verify:
+   - it does not start with `ERROR:`;
+   - it has exactly `N + 2` lines: the header, one empty line, then `N` change lines, where `N` is the number of `changes`;
+   - line `i` contains the `url` of change `i` exactly, and its `name`;
+   - with spaces removed, line `i` contains the integer digits of every numeric `old` / `new` of change `i` (for example `259990` for `259990.00`), and the kopecks when they are not zero.
 
-Telegram accepts up to 4096 characters per message. If the text is longer than 4000 characters, split it **between lines** into several messages, repeat the header in each with `(1/2)`, `(2/2)`, … at the end, and send them in order.
+   The same check is implemented in `check_reply` in `tests/test_telegram_summary.py`.
+
+   If any check fails, do not send and do not "fix" the text yourself: report `Telegram: not sent: summary check failed: <what failed>`. If the agent cannot be called (no Agent tool, the agent is not found, an error), report `Telegram: not sent: summary agent failed: <reason>`. Neither blocks saving the snapshot.
+5. **Split if too long.** Telegram accepts up to 4096 characters per message. If the text is longer than 4000 characters, split it **between lines** into several messages, repeat the header in each with `(1/2)`, `(2/2)`, … at the end, and send them in order.
+
+Then send the text exactly as the agent returned it (except for splitting), as described below.
 
 ### How to send
 
-Run from the project root, passing the text through a heredoc with a **quoted** delimiter, so that quotes, `$` and backticks in error reasons reach Telegram unchanged:
+Run from the project root, passing the text returned by `telegram-summary` through a heredoc with a **quoted** delimiter, so that quotes, `$` and backticks in error reasons reach Telegram unchanged:
 
 ```bash
 python3 send.py "$(cat <<'EOF'

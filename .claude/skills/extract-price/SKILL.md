@@ -17,8 +17,11 @@ Output (JSON only, no free-form text before or after):
 { "regular_price": <positive decimal, KZT>, "sale_price": <positive decimal, KZT> | null, "has_credit": <boolean> | null }
 ```
 
-- `regular_price`: price before discount, from `unitPriceBeforeDiscount` (if absent, use `price`).
-- `sale_price`: current price from `price` if it is lower than `regular_price`, otherwise `null` (no discount).
+Field meaning in the Kaspi card: `price` is the price the product is sold for **now** (what the buyer pays); `unitPriceBeforeDiscount` is the price before a discount, `0` / absent when there is none.
+
+- `regular_price`: `unitPriceBeforeDiscount` if it is **greater than** `price` (there is a discount), otherwise `price`.
+- `sale_price`: `price` if `unitPriceBeforeDiscount` is greater than `price`, otherwise `null` (no discount).
+- Invariant: the current price, `sale_price` if it is not `null`, otherwise `regular_price`, always equals `price`. The purchase price is never understated, even when `unitPriceBeforeDiscount` is stale and lower than `price`.
 - `has_credit`: `loanAvailable` of this product from the Kaspi catalog API (installments / рассрочка / Kaspi Red). `null` if that request fails or the product is not found there. This never turns the result into an error: the prices are still returned.
 
 ## Extraction logic
@@ -34,9 +37,19 @@ Output (JSON only, no free-form text before or after):
 
 2. Prices are not in visible text: take them from the product object embedded in the page's inline state, the `"card":{"id":"<product id>", ...}` object, fields `price` (number) and `unitPriceBeforeDiscount`. Do not use the JSON-LD `"price"` (it is a string and is `"undefined"` when the product is out of stock) or values of recommended products and other offers.
 3. Normalize: remove spaces, non-breaking spaces and `₸`, then convert to a number with 2 decimals (`"289 990 ₸"` becomes `289990.00`).
-4. Compute the fields:
-   - `regular_price` = `unitPriceBeforeDiscount`, or `price` if it is missing. Kaspi sends `unitPriceBeforeDiscount: 0` (not an absent key) when there is no discount, so treat `0` and `null` as missing too;
-   - `sale_price` = `price` only if `price < regular_price`, otherwise `null`;
+4. Compute the fields with [`compute_prices.py`](compute_prices.py) (same folder), passing the two raw values from the card:
+
+   ```bash
+   python3 .claude/skills/extract-price/compute_prices.py <price> <unitPriceBeforeDiscount>
+   ```
+
+   It prints `{"regular_price": "...", "sale_price": "..." | null}` or `{"error": "prices not found in page data"}` (exit code 1). The rule it implements:
+   - treat `unitPriceBeforeDiscount` of `0`, `null` or absent as missing (Kaspi sends `0` when there is no discount);
+   - **discount** (`unitPriceBeforeDiscount > price`): `regular_price` = `unitPriceBeforeDiscount`, `sale_price` = `price`;
+   - **no discount** (missing, or `unitPriceBeforeDiscount == price`): `regular_price` = `price`, `sale_price` = `null`;
+   - **`unitPriceBeforeDiscount < price`** (stale value; Kaspi itself shows `discount: 0` for such cards): there is no discount, `regular_price` = `price`, `sale_price` = `null`. Never put the lower stale value into `regular_price`: that would understate what the buyer pays.
+
+   Do not recompute these by hand. Tests: `tests/test_compute_prices.py`.
    - `has_credit`: see "has_credit source" below. Do this step only after both prices are valid.
 5. Check the result: both prices must be positive numbers. Otherwise treat it as a failure. If the JSON-LD says `"availability": "OutOfStock"` and the card has no valid `price`, the reason is `product unavailable (out of stock)`.
 6. On failure (page not loaded, product unavailable, prices not found) return only:
@@ -80,6 +93,12 @@ Success, with a discount and installments:
 
 ```json
 { "regular_price": 289990.00, "sale_price": 259990.00, "has_credit": true }
+```
+
+Success, `unitPriceBeforeDiscount` (449477) is lower than `price` (449997): no discount, the current price is `price`:
+
+```json
+{ "regular_price": 449997.00, "sale_price": null, "has_credit": true }
 ```
 
 Success, no discount (`sale_price` is `null`):
