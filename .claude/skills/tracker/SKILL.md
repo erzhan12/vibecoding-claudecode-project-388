@@ -1,6 +1,6 @@
 ---
 name: tracker
-description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products, compares it with the previous run read from tracker-data (diff by URL on regular_price, sale_price, has_credit), keeps only the changes that are significant under the rules in KNOWLEDGE.md and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. Use when asked to run the tracker or check prices of all tracked laptops. Later this skill will also notify via Telegram.
+description: Runs a full price check over the hard-coded list of Kaspi.kz product URLs, returns one price table for all products, compares it with the previous run read from tracker-data (diff by URL on regular_price, sale_price, has_credit), keeps only the changes that are significant under the rules in KNOWLEDGE.md and writes the run snapshot as YYYY-MM-DD.json (Asia/Almaty date) to the root of the private erzhan12/tracker-data repository through GitHub MCP tools (mcp__github__*): in a cloud session the built-in session GitHub integration, with tracker-data added to the session with write access; locally, the github server from .mcp.json with GITHUB_PAT. If there are significant changes, sends a short summary (one line per change: product name, old and new price, link) to Telegram with send.py from the project root; sends nothing when there are none. Use when asked to run the tracker or check prices of all tracked laptops.
 ---
 
 # tracker
@@ -80,7 +80,9 @@ Run: 2026-11-04 12:00 (Asia/Almaty)
 
 After the table, add one summary line: how many URLs were checked, how many succeeded and how many failed.
 
-Then compare the run with the previous run and print only significant changes (see "Compare with previous run"), save the snapshot (see "Save snapshot to tracker-data") and finish with the saved file path and the commit SHA and link.
+Then compare the run with the previous run and print only significant changes (see "Compare with previous run"), send them to Telegram if there are any (see "Notify via Telegram"), save the snapshot (see "Save snapshot to tracker-data") and finish with the Telegram status, the saved file path and the commit SHA and link.
+
+To track another product, give it a short name in the list above too: the Telegram summary uses it.
 
 ## Compare with previous run
 
@@ -139,9 +141,84 @@ Significant changes: 4 (in 4 products). Dropped as insignificant: 2.
 - Rows in the order of the tracked URL list, removed products last. A product can have several rows.
 - If nothing is significant, print `No significant changes since <previous file>.` instead of the table, still followed by the `Dropped as insignificant: M` count.
 
-Only these significant changes will be sent to Telegram in a later step; this skill does not send anything yet.
+Exactly these significant changes, and nothing else, go to Telegram (see "Notify via Telegram").
 
-The comparison is output only: it does not change the run table or the snapshot format. A failed comparison (previous snapshot unreadable, GitHub MCP unavailable) never blocks saving the snapshot: report `Previous run: comparison failed: <reason>` and continue.
+The comparison does not change the run table or the snapshot format. A failed comparison (previous snapshot unreadable, GitHub MCP unavailable) never blocks saving the snapshot: report `Previous run: comparison failed: <reason>` and continue.
+
+## Notify via Telegram
+
+Right after "Compare with previous run" and **before** saving the snapshot, send the significant changes to Telegram with [`send.py`](../../../send.py) from the project root.
+
+### When to send
+
+- Send only if the comparison finished and found **at least one** significant change.
+- Send **nothing** if there are no significant changes, on the first run (no previous snapshot), or if the comparison failed. Do not send "no changes" or error messages.
+- Send once per run. Never resend because of a retry of another step.
+
+### Message
+
+Plain text (`send.py` sends without `parse_mode`, so no Markdown or HTML escaping is needed; Telegram makes the links clickable). Write it in Russian:
+
+```text
+Kaspi: значимые изменения цен (2026-11-06 18:00, Алматы)
+
+ASUS VivoBook 15 X1502VA-BQ1274 — скидка появилась: 289 990 ₸ → 259 990 ₸ — https://kaspi.kz/shop/p/...-142645394/?c=750000000
+HYDRA Home H20 — цена без скидки снизилась: 160 000 ₸ → 155 000 ₸ (−3.1 %) — https://kaspi.kz/shop/p/...-115019992/?c=750000000
+ASUS X515EA — снова в наличии: нет в наличии → 199 990 ₸ — https://kaspi.kz/shop/p/...-108345103/?c=750000000
+Lenovo IdeaPad 3 15IAU7 — рассрочка пропала: 165 000 ₸ → 165 000 ₸ — https://kaspi.kz/shop/p/...-107333284/?c=750000000
+```
+
+(Numbers are illustrative. In the real message use the full URLs.)
+
+- First line: the header with the run time (Asia/Almaty), then an empty line.
+- Then **one line per significant change**, in the same order as the comparison table (a product with two changes gets two lines): `<name> — <change>: <old> → <new> — <url>`.
+- `<name>`: the short name from "Tracked URLs" (the text in parentheses up to the first comma, for example `Lenovo IdeaPad 3 15IGL05`). For a product removed from the list, use its product ID.
+- `<url>`: the full tracked URL (for a removed product, the URL from the previous snapshot).
+- Prices: KZT with `₸`, thousands separated by spaces, `.00` dropped (`259 990 ₸`); keep kopecks if they are not zero (`259 990.50 ₸`). Copy the values from the run and the previous snapshot, never recompute or guess them.
+- The current price of a product is `sale_price` if it is not `null`, otherwise `regular_price`.
+- `<change>`, `<old>` and `<new>` for each kind of change from `KNOWLEDGE.md`:
+
+| change (comparison table) | `<change>` in the message | `<old>` → `<new>` |
+|---|---|---|
+| `regular_price up` / `down` | `цена без скидки выросла` / `снизилась` | old → new `regular_price`, then `(±Δ %)` |
+| `sale_price up` / `down` | `цена со скидкой выросла` / `снизилась` | old → new `sale_price`, then `(±Δ %)` |
+| `discount started` | `скидка появилась` | old current price → new `sale_price` |
+| `discount ended` | `скидка закончилась` | old `sale_price` → new current price |
+| `credit gained` / `credit lost` | `рассрочка появилась` / `рассрочка пропала` | old current price → new current price |
+| `back in stock` | `снова в наличии` | `нет в наличии` → new current price |
+| `became unavailable` | `недоступен (<error reason>)` | old current price → `нет в наличии` |
+| `new product` | `новый товар` | `—` → current price (`нет в наличии`, if its row is an error) |
+| `removed from list` | `убран из списка` | old current price (or `нет в наличии`) → `—` |
+
+`Δ %` is the same value as in the comparison table, with 1 decimal.
+
+Telegram accepts up to 4096 characters per message. If the text is longer than 4000 characters, split it **between lines** into several messages, repeat the header in each with `(1/2)`, `(2/2)`, … at the end, and send them in order.
+
+### How to send
+
+Run from the project root, passing the text through a heredoc with a **quoted** delimiter, so that quotes, `$` and backticks in error reasons reach Telegram unchanged:
+
+```bash
+python3 send.py "$(cat <<'EOF'
+Kaspi: значимые изменения цен (2026-11-06 18:00, Алматы)
+
+ASUS VivoBook 15 X1502VA-BQ1274 — скидка появилась: 289 990 ₸ → 259 990 ₸ — https://kaspi.kz/shop/p/...
+EOF
+)"
+```
+
+- `send.py` takes `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` from the environment, or from `.env` next to it (environment wins). In a cloud session they are environment variables of the cloud environment, and its network must allow `api.telegram.org`.
+- **Secrets.** Never print, echo, check by printing, pass on the command line, or write to a file the token or chat ID; never create or commit `.env`; never call the Telegram API directly (curl, Python one-liners). Only `send.py` sends.
+- Success: exit code 0 and the output `Отправлено.`.
+- Failure (non-zero exit code: missing settings, no network, Telegram API error): the error line from `send.py` is already free of secrets. Report `Telegram: not sent: <that line>` and continue: a failed send never blocks saving the snapshot. Do not retry in a loop and do not fall back to other ways of sending.
+
+### Report
+
+In the final report, add one line:
+
+- `Telegram: sent N message(s), K change(s).`
+- `Telegram: nothing to send (no significant changes).` (also on the first run and when the comparison failed: then say why)
+- `Telegram: not sent: <error from send.py>`
 
 ## Save snapshot to tracker-data
 
@@ -200,5 +277,3 @@ UTF-8 JSON, 2-space indent, trailing newline. Rows are in the order of the track
 ```
 
 (Numbers are illustrative. Use the full URLs.) `product_id` is the numeric id at the end of the URL path; it is the stable key for comparing snapshots between days.
-
-A later step of the project will send the significant changes found in "Compare with previous run" to Telegram; this skill does not do that yet.
