@@ -1,0 +1,41 @@
+{
+  "run_at": "2026-11-06 18:21",
+  "changes": [
+    {
+      "name": "ASUS X515EA",
+      "url": "https://kaspi.kz/shop/p/asus-15-6-16-gb-ssd-512-gb-dos-x515ea-bq970-90nb0ty2-m02zn0-108345103/?c=750000000",
+      "change": "back in stock",
+      "old": "unavailable",
+      "new": 199990.0,
+      "delta_pct": null,
+      "reason": null
+    },
+    {
+      "name": "Rynex NT1805",
+      "url": "https://kaspi.kz/shop/p/rynex-nt1805-15-6-intel-celeron-j3455-12-gb-ssd-512-gb-intel-arc-graphics-140v-win-11-nt1805-serebristyi-176721925/?c=750000000",
+      "change": "discount ended",
+      "old": 149900.0,
+      "new": 400000.0,
+      "delta_pct": null,
+      "reason": null
+    },
+    {
+      "name": "HYDRA Home H20",
+      "url": "https://kaspi.kz/shop/p/hydra-home-h20-15-6-intel-pentium-n4200-12-gb-ssd-512-gb-hd-graphics-500-win-10-mkii-serebristyi-115019992/?c=750000000",
+      "change": "credit lost",
+      "old": 160000.0,
+      "new": 160000.0,
+      "delta_pct": null,
+      "reason": null
+    },
+    {
+      "name": "Acer Aspire 3 A325-45",
+      "url": "https://kaspi.kz/shop/p/acer-aspire-3-15-6-intel-celeron-n4500-8-gb-ssd-256-gb-uhd-graphics-win-11-pro-a325-45-zn-n01si-03k-serebristyi-136300221/?c=750000000",
+      "change": "sale_price down",
+      "old": 238570.0,
+      "new": 229990.5,
+      "delta_pct": -3.6,
+      "reason": null
+    }
+  ]
+}

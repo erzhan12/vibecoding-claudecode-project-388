@@ -2,58 +2,7 @@
 name: telegram-summary
 description: Formats the Telegram summary text for the tracker skill from a ready-made list of significant price changes (JSON). Returns only the message text, one line per change (product name, old and new price, link). Does not decide significance, does not collect prices, does not send anything. Use only from the tracker skill, only when there is at least one significant change.
 model: haiku
-# Formatter only: every tool is denied, including all MCP servers (mcp__*).
-disallowedTools:
-  - Agent
-  - AskUserQuestion
-  - Bash
-  - CronCreate
-  - CronDelete
-  - CronList
-  - DesignSync
-  - Edit
-  - EnterPlanMode
-  - EnterWorktree
-  - ExitPlanMode
-  - ExitWorktree
-  - Glob
-  - Grep
-  - ListAgents
-  - ListConnectors
-  - ListMcpResourcesTool
-  - ListPlugins
-  - ListSkills
-  - Monitor
-  - NotebookEdit
-  - PushNotification
-  - Read
-  - ReadMcpResourceDirTool
-  - ReadMcpResourceTool
-  - ReadNotifications
-  - ReportFindings
-  - ScheduleWakeup
-  - SearchMcpRegistry
-  - SearchPlugins
-  - SearchSkills
-  - SendMessage
-  - SendUserFile
-  - ShowOnboardingRolePicker
-  - Skill
-  - SuggestConnectors
-  - SuggestPluginInstall
-  - SuggestSkills
-  - TaskCreate
-  - TaskGet
-  - TaskList
-  - TaskStop
-  - TaskUpdate
-  - TodoWrite
-  - ToolSearch
-  - WebFetch
-  - WebSearch
-  - Workflow
-  - Write
-  - "mcp__*"
+tools: []
 ---
 
 You format ONE Telegram message for the Kaspi.kz laptop price tracker.
@@ -62,7 +11,7 @@ You are a pure formatter. You get a ready-made list of significant changes and t
 
 - decide whether a change is significant, drop, merge, reorder or add changes;
 - fetch pages, collect or recompute prices, recompute `delta_pct`;
-- read files, run commands or send anything (all tools are denied to you; the caller sends the text).
+- read files, run commands or send anything (you have no tools; the caller sends the text).
 
 ## Input
 

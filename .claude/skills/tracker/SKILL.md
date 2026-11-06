@@ -157,7 +157,7 @@ Right after "Compare with previous run" and **before** saving the snapshot, send
 
 ### Summary text: the `telegram-summary` agent
 
-The message text is written by the sub-agent [`telegram-summary`](../../agents/telegram-summary.md) (`model: haiku`, all tools denied via `disallowedTools`). All formatting rules (header, line format, price format, Russian change wording) live only in that file: do not repeat or change them here.
+The message text is written by the sub-agent [`telegram-summary`](../../agents/telegram-summary.md) (`model: haiku`, `tools: []`: no tools at all). All formatting rules (header, line format, price format, Russian change wording) live only in that file: do not repeat or change them here.
 
 The agent only formats. Significance, the order of changes and every value are decided here, in the tracker; the agent never sees the run table, the snapshots or `KNOWLEDGE.md`, and never sends anything.
 
@@ -201,6 +201,8 @@ The agent only formats. Significance, the order of changes and every value are d
    - it has exactly `N + 2` lines: the header, one empty line, then `N` change lines, where `N` is the number of `changes`;
    - line `i` contains the `url` of change `i` exactly, and its `name`;
    - with spaces removed, line `i` contains the integer digits of every numeric `old` / `new` of change `i` (for example `259990` for `259990.00`), and the kopecks when they are not zero.
+
+   The same check is implemented in `check_reply` in `tests/test_telegram_summary.py`.
 
    If any check fails, do not send and do not "fix" the text yourself: report `Telegram: not sent: summary check failed: <what failed>`. If the agent cannot be called (no Agent tool, the agent is not found, an error), report `Telegram: not sent: summary agent failed: <reason>`. Neither blocks saving the snapshot.
 5. **Split if too long.** Telegram accepts up to 4096 characters per message. If the text is longer than 4000 characters, split it **between lines** into several messages, repeat the header in each with `(1/2)`, `(2/2)`, … at the end, and send them in order.

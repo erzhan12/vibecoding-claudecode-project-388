@@ -12,10 +12,13 @@
 |---|---|
 | [`.claude/skills/tracker/SKILL.md`](.claude/skills/tracker/SKILL.md) | Скилл `tracker`: полный прогон по списку товаров, сравнение с прошлым снимком, сводка в Telegram, сохранение снимка в `erzhan12/tracker-data` |
 | [`.claude/skills/extract-price/SKILL.md`](.claude/skills/extract-price/SKILL.md) | Скилл `extract-price`: цены и рассрочка по одной ссылке на карточку |
-| [`.claude/agents/telegram-summary.md`](.claude/agents/telegram-summary.md) | Сабагент `telegram-summary` (`model: haiku`, все инструменты запрещены через `disallowedTools`): из готового списка значимых изменений пишет текст сводки для Telegram; правила оформления сводки — только здесь |
+| [`.claude/agents/telegram-summary.md`](.claude/agents/telegram-summary.md) | Сабагент `telegram-summary` (`model: haiku`, `tools: []` — без инструментов): из готового списка значимых изменений пишет текст сводки для Telegram; правила оформления сводки — только здесь |
 | [`KNOWLEDGE.md`](KNOWLEDGE.md) | Правила значимости изменений (порог цены, скидка, рассрочка, наличие) |
 | [`send.py`](send.py) | Отправка текста в Telegram: `python3 send.py "текст"` |
+| [`.claude/skills/extract-price/compute_prices.py`](.claude/skills/extract-price/compute_prices.py) | Расчёт `regular_price` / `sale_price` из `price` и `unitPriceBeforeDiscount` (правило скилла `extract-price`) |
 | [`tests/test_send.py`](tests/test_send.py) | Тесты `send.py` без сети |
+| [`tests/test_compute_prices.py`](tests/test_compute_prices.py) | Тесты расчёта цен: скидка, равные цены, `price` выше `unitPriceBeforeDiscount`, ошибки |
+| [`tests/test_telegram_summary.py`](tests/test_telegram_summary.py) | Проверка формата Telegram-сводки: эталон, фикстуры с ответами Haiku (`tests/fixtures/telegram_summary/`), проверка ответа перед отправкой; живой вызов агента — только с `RUN_HAIKU_SUMMARY=1` |
 | [`TASK.md`](TASK.md) | Цель, контракт полей, отслеживаемые ссылки |
 | [`.mcp.json`](.mcp.json) | MCP-сервер GitHub для локального запуска (`GITHUB_PAT`) |
 
@@ -33,6 +36,12 @@
 
 ```bash
 python3 -m unittest discover -s tests -v
+```
+
+Живая проверка агента `telegram-summary` на Haiku (платно, нужен залогиненный `claude`, в Telegram ничего не отправляет):
+
+```bash
+RUN_HAIKU_SUMMARY=1 python3 -m unittest tests.test_telegram_summary -v
 ```
 
 ## Как добавить скилл
