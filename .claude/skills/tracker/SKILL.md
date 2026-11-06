@@ -157,7 +157,7 @@ Right after "Compare with previous run" and **before** saving the snapshot, send
 
 ### Summary text: the `telegram-summary` agent
 
-The message text is written by the sub-agent [`telegram-summary`](../../agents/telegram-summary.md) (`model: haiku`, no tools). All formatting rules (header, line format, price format, Russian change wording) live only in that file: do not repeat or change them here.
+The message text is written by the sub-agent [`telegram-summary`](../../agents/telegram-summary.md) (`model: haiku`, all tools denied via `disallowedTools`). All formatting rules (header, line format, price format, Russian change wording) live only in that file: do not repeat or change them here.
 
 The agent only formats. Significance, the order of changes and every value are decided here, in the tracker; the agent never sees the run table, the snapshots or `KNOWLEDGE.md`, and never sends anything.
 

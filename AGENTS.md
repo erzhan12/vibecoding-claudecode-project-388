@@ -12,7 +12,7 @@
 |---|---|
 | [`.claude/skills/tracker/SKILL.md`](.claude/skills/tracker/SKILL.md) | Скилл `tracker`: полный прогон по списку товаров, сравнение с прошлым снимком, сводка в Telegram, сохранение снимка в `erzhan12/tracker-data` |
 | [`.claude/skills/extract-price/SKILL.md`](.claude/skills/extract-price/SKILL.md) | Скилл `extract-price`: цены и рассрочка по одной ссылке на карточку |
-| [`.claude/agents/telegram-summary.md`](.claude/agents/telegram-summary.md) | Сабагент `telegram-summary` (`model: haiku`, без инструментов): из готового списка значимых изменений пишет текст сводки для Telegram; правила оформления сводки — только здесь |
+| [`.claude/agents/telegram-summary.md`](.claude/agents/telegram-summary.md) | Сабагент `telegram-summary` (`model: haiku`, все инструменты запрещены через `disallowedTools`): из готового списка значимых изменений пишет текст сводки для Telegram; правила оформления сводки — только здесь |
 | [`KNOWLEDGE.md`](KNOWLEDGE.md) | Правила значимости изменений (порог цены, скидка, рассрочка, наличие) |
 | [`send.py`](send.py) | Отправка текста в Telegram: `python3 send.py "текст"` |
 | [`tests/test_send.py`](tests/test_send.py) | Тесты `send.py` без сети |
