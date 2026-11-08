@@ -112,9 +112,9 @@ The diff is the full list of field changes per product, before any filtering. Ne
 
 ### 3. Apply the significance rules
 
-Read [`KNOWLEDGE.md`](../../../KNOWLEDGE.md) (project root) and apply its rules to every change in the diff: price threshold, discount started / ended, credit changed, availability, new / removed product. Do not hard-code the rules or the threshold in this skill: `KNOWLEDGE.md` is the single source; if it changes, follow the new version.
+Read [`KNOWLEDGE.md`](../../../KNOWLEDGE.md) (project root) and apply its rules to every change in the diff: price threshold, discount started / ended, `regular_price` while a discount is active in both runs (see "Зачёркнутая цена"), credit changed, availability, new / removed product. Do not hard-code the rules or the threshold in this skill: `KNOWLEDGE.md` is the single source; if it changes, follow the new version.
 
-Keep only the changes the rules call significant and **drop everything else**: changes under the price threshold (for example kopeck-level fluctuations), `has_credit` going to or from `null`, error in both runs, and so on.
+Keep only the changes the rules call significant and **drop everything else**: changes under the price threshold (for example kopeck-level fluctuations), a `regular_price` change that `KNOWLEDGE.md` does not count while a discount is active, `has_credit` going to or from `null`, error in both runs, and so on.
 
 ### Output
 
