@@ -18,6 +18,7 @@
 | [`.claude/skills/extract-price/compute_prices.py`](.claude/skills/extract-price/compute_prices.py) | Расчёт `regular_price` / `sale_price` из `price` и `unitPriceBeforeDiscount` (правило скилла `extract-price`) |
 | [`tests/test_send.py`](tests/test_send.py) | Тесты `send.py` без сети |
 | [`tests/test_compute_prices.py`](tests/test_compute_prices.py) | Тесты расчёта цен: скидка, равные цены, `price` выше `unitPriceBeforeDiscount`, ошибки |
+| [`tests/test_significance.py`](tests/test_significance.py) | Проверка таблицы «Примеры на границах» из `KNOWLEDGE.md` (порог, скидка, зачёркнутая цена) и того, что `tracker` не хардкодит правила |
 | [`tests/test_telegram_summary.py`](tests/test_telegram_summary.py) | Проверка формата Telegram-сводки: эталон, фикстуры с ответами Haiku (`tests/fixtures/telegram_summary/`), проверка ответа перед отправкой; живой вызов агента — только с `RUN_HAIKU_SUMMARY=1` |
 | [`TASK.md`](TASK.md) | Цель, контракт полей, отслеживаемые ссылки |
 | [`.mcp.json`](.mcp.json) | MCP-сервер GitHub для локального запуска (`GITHUB_PAT`) |
