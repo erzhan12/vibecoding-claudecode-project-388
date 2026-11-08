@@ -10,7 +10,11 @@
 
 ## Стек
 
-- Разное
+- Python 3 — скрипты только на стандартной библиотеке, тесты через `unittest`
+- Claude Code — скиллы `tracker` и `extract-price`, сабагент `telegram-summary` (Haiku)
+- Telegram Bot API — отправка сводки (`send.py`)
+- Kaspi.kz — HTML карточки товара и каталожный API (`curl`)
+- GitHub — снимки цен в `erzhan12/tracker-data`, MCP GitHub для локального запуска
 
 ## Установка
 
