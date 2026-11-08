@@ -11,7 +11,7 @@ The tracker only orchestrates. All fetching, parsing and price rules live in the
 
 ## Tracked URLs
 
-Taken from the "Отслеживаемые ноутбуки" section of [`TASK.md`](../../../TASK.md). Process them in this order:
+This is the single source of the tracked product list: `TASK.md`, `AGENTS.md` and `README.md` only link here and must not copy the URLs. Process them in this order:
 
 1. https://kaspi.kz/shop/p/asus-vivobook-15-x1502va-bq1274-15-6-intel-core-i5-13420h-16-gb-ssd-512-gb-uhd-graphics-bez-os-90nb10t2-m01th0-serebristyi-142645394/?c=750000000
    (ASUS VivoBook 15 X1502VA-BQ1274, in stock, with a discount)
@@ -28,9 +28,11 @@ Taken from the "Отслеживаемые ноутбуки" section of [`TASK.m
 7. https://kaspi.kz/shop/p/acer-aspire-3-15-6-intel-celeron-n4500-8-gb-ssd-256-gb-uhd-graphics-win-11-pro-a325-45-zn-n01si-03k-serebristyi-136300221/?c=750000000
    (Acer Aspire 3 A325-45, Celeron N4500)
 
-To track another product, add its `kaspi.kz/shop/p/...` URL to this list and to `TASK.md`.
+To track another product, add its `kaspi.kz/shop/p/...` URL to this list only.
 
 ## Main scenario
+
+Process the URLs **strictly one at a time**, in list order. Never check several URLs in parallel: no parallel tool calls, no background jobs, no sub-agents fetching other URLs at the same time.
 
 For each URL in the list, in order:
 
@@ -38,11 +40,12 @@ For each URL in the list, in order:
 2. Take its JSON result as is. It is one of:
    - success: `{ "regular_price": ..., "sale_price": ... | null, "has_credit": ... | null }`
    - error: `{ "error": "<reason>", "url": "<url>" }`
-3. Turn it into one table row (see "Run table") and move on to the next URL.
+3. Turn it into one table row (see "Run table").
+4. If this is not the last URL, **pause for 2 seconds** before starting the next one (for example run `sleep 2` with the Bash tool, as its own call, after this URL is fully finished). Pause after every URL except the last, whether its result was a success or an error (including a timeout or an unexpected response): the next request to Kaspi never starts sooner than 2 seconds after the previous one ended.
 
 Do not fetch pages, call the catalog API or compute prices in this skill. If a value looks wrong, fix `extract-price`, not the tracker.
 
-A failure on one URL (an `extract-price` error, a timeout, an unexpected response) must not stop the run: record it as an error row and continue with the next URL.
+A failure on one URL (an `extract-price` error, a timeout, an unexpected response) must not stop the run: record it as an error row, pause 2 seconds as in step 4, and continue with the next URL.
 
 ## Run table
 
