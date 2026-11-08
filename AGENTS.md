@@ -4,13 +4,13 @@
 
 Проект — трекер цен на ноутбуки в Kaspi.kz: проверяет цены по списку товаров,
 сравнивает с прошлым прогоном, оставляет только значимые изменения и присылает
-их в Telegram. Цель, контракт полей и список товаров — в [`TASK.md`](TASK.md).
+их в Telegram. Цель и контракт полей — в [`TASK.md`](TASK.md), список товаров — в скилле `tracker`.
 
 ## Где что лежит
 
 | Файл | Назначение |
 |---|---|
-| [`.claude/skills/tracker/SKILL.md`](.claude/skills/tracker/SKILL.md) | Скилл `tracker`: полный прогон по списку товаров, сравнение с прошлым снимком, сводка в Telegram, сохранение снимка в `erzhan12/tracker-data` |
+| [`.claude/skills/tracker/SKILL.md`](.claude/skills/tracker/SKILL.md) | Скилл `tracker`: единственный список отслеживаемых товаров («Tracked URLs»), последовательный прогон по нему с паузой 2 с между товарами, сравнение с прошлым снимком, сводка в Telegram, сохранение снимка в `erzhan12/tracker-data` |
 | [`.claude/skills/extract-price/SKILL.md`](.claude/skills/extract-price/SKILL.md) | Скилл `extract-price`: цены и рассрочка по одной ссылке на карточку |
 | [`.claude/agents/telegram-summary.md`](.claude/agents/telegram-summary.md) | Сабагент `telegram-summary` (`model: haiku`, `tools: []` — без инструментов): из готового списка значимых изменений пишет текст сводки для Telegram; правила оформления сводки — только здесь |
 | [`KNOWLEDGE.md`](KNOWLEDGE.md) | Правила значимости изменений (порог цены, скидка, рассрочка, наличие) |
@@ -20,7 +20,7 @@
 | [`tests/test_compute_prices.py`](tests/test_compute_prices.py) | Тесты расчёта цен: скидка, равные цены, `price` выше `unitPriceBeforeDiscount`, ошибки |
 | [`tests/test_significance.py`](tests/test_significance.py) | Проверка таблицы «Примеры на границах» из `KNOWLEDGE.md` (порог, скидка, зачёркнутая цена) и того, что `tracker` не хардкодит правила |
 | [`tests/test_telegram_summary.py`](tests/test_telegram_summary.py) | Проверка формата Telegram-сводки: эталон, фикстуры с ответами Haiku (`tests/fixtures/telegram_summary/`), проверка ответа перед отправкой; живой вызов агента — только с `RUN_HAIKU_SUMMARY=1` |
-| [`TASK.md`](TASK.md) | Цель, контракт полей, отслеживаемые ссылки |
+| [`TASK.md`](TASK.md) | Цель, контракт полей, пример карточки; список товаров здесь не ведётся |
 | [`.mcp.json`](.mcp.json) | MCP-сервер GitHub для локального запуска (`GITHUB_PAT`) |
 
 Инструкции скиллов и правила значимости живут только в файлах выше. Не копируйте
@@ -29,7 +29,7 @@
 ## Правила
 
 - Скиллы не дублируют друг друга: `tracker` только оркестрирует, всё извлечение цен — в `extract-price`; пороги и правила значимости — только в `KNOWLEDGE.md`; оформление Telegram-сводки — только в агенте `telegram-summary` (он не решает значимость, не собирает цены и ничего не отправляет).
-- Список товаров ведётся в двух местах синхронно: раздел «Отслеживаемые ноутбуки» в `TASK.md` и «Tracked URLs» в скилле `tracker`.
+- Список товаров ведётся в одном месте — раздел «Tracked URLs» в [`.claude/skills/tracker/SKILL.md`](.claude/skills/tracker/SKILL.md). Не копируйте URL в `TASK.md`, `README.md` и другие файлы: чтобы добавить или убрать товар, меняйте только скилл.
 - Секреты (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `GITHUB_PAT`) берутся из переменных окружения или `.env` (он в `.gitignore`). Не выводите их, не передавайте в аргументах команд, не пишите в файлы и коммиты. В Telegram отправляет только `send.py`.
 - Не удаляйте и не меняйте `.github/workflows/hexlet-check.yml`: на нём держатся автотесты Хекслета.
 
