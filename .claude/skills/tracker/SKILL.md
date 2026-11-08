@@ -125,7 +125,7 @@ Previous run: 2026-11-04.json (run_at 2026-11-04T18:20:11+05:00)
 
 | product | change | old | new | Δ |
 |---------|--------|-----|-----|---|
-| [142645394](https://kaspi.kz/shop/p/...-142645394/?c=750000000) | discount started | null | 259990.00 | |
+| [142645394](https://kaspi.kz/shop/p/...-142645394/?c=750000000) | discount started | 289990.00 | 259990.00 | |
 | [115019992](https://kaspi.kz/shop/p/...-115019992/?c=750000000) | regular_price down | 160000.00 | 155000.00 | −5000.00 (−3.1 %) |
 | [108345103](https://kaspi.kz/shop/p/...-108345103/?c=750000000) | back in stock | error: product unavailable (out of stock) | 199990.00 / null | |
 | [107333284](https://kaspi.kz/shop/p/...-107333284/?c=750000000) | credit lost | true | false | |
@@ -137,7 +137,7 @@ Significant changes: 4 (in 4 products). Dropped as insignificant: 2.
 
 - `product`: the product ID from the URL, linked to the full URL.
 - `change`: what happened, in the words of `KNOWLEDGE.md`: `regular_price up/down`, `sale_price up/down`, `discount started`, `discount ended`, `credit gained`, `credit lost`, `back in stock`, `became unavailable`, `new product`, `removed from list`.
-- `old` / `new`: the values of that field; for availability changes, the error reason or `regular_price / sale_price`.
+- `old` / `new`: the values of that field; for `discount started` / `discount ended`, the purchase price before → after (one event, see `KNOWLEDGE.md`; values as in the `old` / `new` table under "Build the input"); for availability changes, the error reason or `regular_price / sale_price`.
 - Rows in the order of the tracked URL list, removed products last. A product can have several rows.
 - If nothing is significant, print `No significant changes since <previous file>.` instead of the table, still followed by the `Dropped as insignificant: M` count.
 

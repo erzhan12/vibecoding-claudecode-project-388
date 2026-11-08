@@ -32,16 +32,28 @@ def price_changes(old_regular, old_sale, new_regular, new_sale):
     discount_after = new_sale is not None
 
     if not discount_before and discount_after:
+        # Одно событие: изменение regular_price в том же прогоне в него входит.
         changes.add("discount started")
     elif discount_before and not discount_after:
         changes.add("discount ended")
     elif discount_before and discount_after:
+        # Зачёркнутая цена при скидке в обоих прогонах не значима никогда.
         by_threshold("sale_price", old_sale, new_sale)
-
-    # Зачёркнутая цена при скидке в обоих прогонах не значима никогда.
-    if not (discount_before and discount_after):
+    else:
         by_threshold("regular_price", old_regular, new_regular)
     return changes
+
+
+def current_price(regular, sale):
+    """Цена покупки по контракту TASK.md: sale_price, а если его нет — regular_price."""
+    return sale if sale is not None else regular
+
+
+def event_transition(old_regular, old_sale, new_regular, new_sale):
+    """Что показывает строка события скидки: цена покупки до → после; None, если события нет."""
+    if (old_sale is None) == (new_sale is None):
+        return None
+    return current_price(old_regular, old_sale), current_price(new_regular, new_sale)
 
 
 def parse_price(cell):
@@ -61,10 +73,20 @@ def load_examples():
     rows = []
     for line in block.group(1).strip().splitlines()[2:]:  # без заголовка и |---|
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
-        number, old_r, old_s, new_r, new_s, expected, _why = cells
+        number, old_r, old_s, new_r, new_s, expected, transition, _why = cells
         expected_set = set() if expected == "—" else {e.strip() for e in expected.split(",")}
+        if transition == "—":
+            transition = None
+        else:
+            before, after = transition.split("→")
+            transition = (parse_price(before), parse_price(after))
         rows.append(
-            (number, parse_price(old_r), parse_price(old_s), parse_price(new_r), parse_price(new_s), expected_set)
+            (
+                number,
+                (parse_price(old_r), parse_price(old_s), parse_price(new_r), parse_price(new_s)),
+                expected_set,
+                transition,
+            )
         )
     return rows
 
@@ -78,9 +100,21 @@ class KnowledgeExamplesTest(unittest.TestCase):
         self.assertGreaterEqual(len(load_examples()), 10)
 
     def test_examples_follow_rules(self):
-        for number, old_r, old_s, new_r, new_s, expected in load_examples():
+        for number, prices, expected, _transition in load_examples():
             with self.subTest(example=number):
-                self.assertEqual(price_changes(old_r, old_s, new_r, new_s), expected)
+                self.assertEqual(price_changes(*prices), expected)
+
+    def test_examples_show_purchase_price_transition(self):
+        for number, prices, _expected, transition in load_examples():
+            with self.subTest(example=number):
+                self.assertEqual(event_transition(*prices), transition)
+
+    def test_examples_cover_both_discount_events_with_regular_change(self):
+        kinds = set()
+        for _number, (old_r, _old_s, new_r, _new_s), expected, _transition in load_examples():
+            if old_r != new_r:
+                kinds |= expected & {"discount started", "discount ended"}
+        self.assertEqual(kinds, {"discount started", "discount ended"})
 
     def test_regular_price_ignored_while_discount_in_both(self):
         # Скидка в обоих, sale_price та же: зачёркнутая меняется хоть вдвое — тишина.
@@ -94,6 +128,20 @@ class KnowledgeExamplesTest(unittest.TestCase):
         self.assertEqual(price_changes(D("100000"), None, D("99000"), None), {"regular_price down"})
         self.assertEqual(price_changes(D("100000"), None, D("99000.01"), None), set())
 
+    def test_discount_started_with_regular_change_is_one_event(self):
+        # Скидка появилась, regular_price одновременно +10 %: одно событие, 100000 → 95000.
+        prices = (D("100000"), None, D("110000"), D("95000"))
+        self.assertEqual(price_changes(*prices), {"discount started"})
+        self.assertEqual(event_transition(*prices), (D("100000"), D("95000")))
+
+    def test_discount_ended_with_regular_change_is_one_event(self):
+        # Скидка закончилась, regular_price одновременно −10 %: одно событие, 95000 → 99000.
+        for new_regular in ("99000", "110000", "100000"):
+            with self.subTest(new_regular=new_regular):
+                prices = (D("110000"), D("95000"), D(new_regular), None)
+                self.assertEqual(price_changes(*prices), {"discount ended"})
+                self.assertEqual(event_transition(*prices), (D("95000"), D(new_regular)))
+
     def test_discount_events_always_significant(self):
         self.assertEqual(price_changes(D("100000"), None, D("100000"), D("99999.99")), {"discount started"})
         self.assertEqual(price_changes(D("100000"), D("99999.99"), D("100000"), None), {"discount ended"})
@@ -106,6 +154,12 @@ class TrackerDoesNotDuplicateRulesTest(unittest.TestCase):
         self.assertIsNone(
             re.search(r"(?<![\d.,])1\s?%", text), "порог не должен быть захардкожен в tracker"
         )
+
+    def test_tracker_discount_events_show_purchase_price(self):
+        text = TRACKER.read_text(encoding="utf-8")
+        self.assertIn("| `discount started` | old current price | new `sale_price` |", text)
+        self.assertIn("| `discount ended` | old `sale_price` | new current price |", text)
+        self.assertIn("| discount started | 289990.00 | 259990.00 |", text)
 
 
 def D(text):
